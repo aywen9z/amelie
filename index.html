@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Budget Détaillé</title>
+    <title>Mon Budget Cloud & Historique</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -32,8 +32,13 @@
                 </div>
             </div>
 
-            <!-- Formulaires d'authentification -->
-            <div class="flex items-center gap-2 flex-wrap">
+            <!-- Filtre Mois & Contrôles -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 p-1.5 rounded-xl">
+                    <label class="text-xs font-medium px-2 text-slate-600 dark:text-slate-300">Mois :</label>
+                    <input type="month" id="filter-month" onchange="renderAll()" class="bg-white dark:bg-slate-800 text-xs p-1.5 rounded-lg border dark:border-slate-600 focus:outline-none">
+                </div>
+                
                 <div id="auth-forms" class="flex gap-2 items-center">
                     <input type="email" id="auth-email" placeholder="Email" class="p-2 text-xs bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
                     <input type="password" id="auth-pass" placeholder="Mot de passe" class="p-2 text-xs bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
@@ -48,14 +53,14 @@
             </div>
         </div>
 
-        <!-- Statistiques Globales -->
+        <!-- Statistiques Globales (Mois Sélectionné) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <p class="text-sm font-medium text-slate-500 mb-1">Revenus / Salaire</p>
+                <p class="text-sm font-medium text-slate-500 mb-1">Revenus / Salaire du mois</p>
                 <p class="text-3xl font-bold text-emerald-500"><span id="total-incomes">0</span> €</p>
             </div>
             <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <p class="text-sm font-medium text-slate-500 mb-1">Total Dépenses</p>
+                <p class="text-sm font-medium text-slate-500 mb-1">Total Dépenses du mois</p>
                 <p class="text-3xl font-bold text-red-500"><span id="total-expenses">0</span> €</p>
             </div>
             <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
@@ -71,8 +76,8 @@
                     <h2 class="text-lg font-bold mb-4">Nouvelle Opération</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="col-span-2 sm:col-span-1">
-                            <label class="text-xs font-medium text-slate-500 mb-1 block">Titre (ex: Salaire, Loyer...)</label>
-                            <input type="text" id="t-name" placeholder="Ex: Salaire de base" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Titre</label>
+                            <input type="text" id="t-name" placeholder="Ex: Salaire / Loyer" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
                         </div>
                         <div class="col-span-2 sm:col-span-1">
                             <label class="text-xs font-medium text-slate-500 mb-1 block">Montant (€)</label>
@@ -81,7 +86,7 @@
                         <div class="col-span-2 sm:col-span-1">
                             <label class="text-xs font-medium text-slate-500 mb-1 block">Catégorie</label>
                             <select id="t-category" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
-                                <option value="Salaire / Revenu Fixe">Salaire / Revenu Fixe</option>
+                                <option value="Salaire / Revenu">Salaire / Revenu</option>
                                 <option value="Courses">Courses</option>
                                 <option value="Loyer">Loyer</option>
                                 <option value="Transport">Transport</option>
@@ -96,13 +101,26 @@
                                 <option value="expense">Dépense (-)</option>
                             </select>
                         </div>
+                        <div class="col-span-2">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Date de l'opération</label>
+                            <input type="date" id="t-date" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                        </div>
                     </div>
                     <button onclick="addTransaction()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition">Ajouter l'opération</button>
                 </div>
 
-                <!-- Graphique Donut Détaillé (Plein de petits morceaux) -->
+                <!-- Graphique Donut Détaillé avec choix des couleurs -->
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                    <h2 class="text-lg font-bold mb-4">Répartition Détaillée (Salaire & Morceaux de Dépenses)</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold">Répartition Détaillée</h2>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-slate-500">Palette :</label>
+                            <select id="color-palette-select" onchange="renderAll()" class="text-xs p-1.5 bg-slate-50 dark:bg-slate-900 border rounded-lg dark:border-slate-700">
+                                <option value="normal">Normaux (Vifs)</option>
+                                <option value="pastel">Pastels</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="relative h-72 w-full flex items-center justify-center">
                         <canvas id="proportionChart"></canvas>
                     </div>
@@ -111,8 +129,8 @@
 
             <!-- Historique -->
             <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col">
-                <h2 class="text-lg font-bold mb-4">Historique Temps Réel</h2>
-                <div id="transactions-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2 flex-grow"></div>
+                <h2 class="text-lg font-bold mb-4">Historique des opérations du mois</h2>
+                <div id="transactions-list" class="space-y-3 max-h-[600px] overflow-y-auto pr-2 flex-grow"></div>
             </div>
         </div>
     </div>
@@ -121,16 +139,16 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
-           apiKey: "AIzaSyAosWGrb8yV7ParDFKAVtW95hhZzDEuWHc",
-          authDomain: "monbudgetapp-82e51.firebaseapp.com",
-         projectId: "monbudgetapp-82e51",
-           storageBucket: "monbudgetapp-82e51.firebasestorage.app",
-            messagingSenderId: "892700364196",
-           appId: "1:892700364196:web:7f4b7db99c7b7eb05a4531"
-        };
+  apiKey: "AIzaSyAosWGrb8yV7ParDFKAVtW95hhZzDEuWHc",
+  authDomain: "monbudgetapp-82e51.firebaseapp.com",
+  projectId: "monbudgetapp-82e51",
+  storageBucket: "monbudgetapp-82e51.firebasestorage.app",
+  messagingSenderId: "892700364196",
+  appId: "1:892700364196:web:7f4b7db99c7b7eb05a4531"
+};
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -139,13 +157,20 @@
         let data = { transactions: [] };
         let chartInstance = null;
         let unsub = null;
+        let currentUser = null;
 
-        // Palette de couleurs variées pour créer plein de petits morceaux distincts
-        const colorPalette = [
-            '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', 
-            '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', 
-            '#06b6d4', '#e11d48', '#4f46e5', '#1098ad', '#f43f5e'
-        ];
+        // Palettes de couleurs Normales vs Pastels
+        const palettes = {
+            normal: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#84cc16'],
+            pastel: ['#93c5fd', '#6ee7b7', '#fde68a', '#fca5a5', '#c4b5fd', '#fbcfe8', '#a5f3fc', '#fed7aa', '#c7d2fe', '#bef264']
+        };
+
+        window.onload = () => {
+            // Mettre la date du jour par défaut dans le formulaire et le mois en cours dans le filtre
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('t-date').value = today;
+            document.getElementById('filter-month').value = today.slice(0, 7);
+        };
 
         window.toggleDarkMode = () => {
             document.documentElement.classList.toggle('dark');
@@ -155,18 +180,13 @@
         window.registerUser = async () => {
             const email = document.getElementById('auth-email').value;
             const pass = document.getElementById('auth-pass').value;
-            try {
-                await createUserWithEmailAndPassword(auth, email, pass);
-                alert("Compte créé avec succès !");
-            } catch(e) { alert("Erreur : " + e.message); }
+            try { await createUserWithEmailAndPassword(auth, email, pass); alert("Compte créé !"); } catch(e) { alert("Erreur : " + e.message); }
         };
 
         window.loginUser = async () => {
             const email = document.getElementById('auth-email').value;
             const pass = document.getElementById('auth-pass').value;
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } catch(e) { alert("Erreur de connexion : " + e.message); }
+            try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { alert("Erreur : " + e.message); }
         };
 
         window.logoutUser = async () => { await signOut(auth); };
@@ -194,23 +214,19 @@
             }
         });
 
-        let currentUser = null;
-
         window.addTransaction = async () => {
             if(!currentUser) return alert("Veuillez vous connecter pour enregistrer vos opérations.");
             const name = document.getElementById('t-name').value;
             const amount = parseFloat(document.getElementById('t-amount').value);
             const category = document.getElementById('t-category').value;
             const type = document.getElementById('t-type').value;
+            const date = document.getElementById('t-date').value;
 
-            if(!name || isNaN(amount) || amount <= 0) return alert("Veuillez remplir correctement les champs.");
+            if(!name || isNaN(amount) || amount <= 0 || !date) return alert("Veuillez remplir tous les champs correctement.");
 
-            data.transactions.unshift({
-                id: Date.now(), name, amount, category, type,
-                date: new Date().toLocaleDateString('fr-FR')
-            });
+            data.transactions.unshift({ id: Date.now(), name, amount, category, type, date });
 
-            if(currentUser) await setDoc(doc(db, "budgets", currentUser), data);
+            await setDoc(doc(db, "budgets", currentUser), data);
             document.getElementById('t-name').value = '';
             document.getElementById('t-amount').value = '';
             renderAll();
@@ -223,9 +239,17 @@
             renderAll();
         };
 
-        function renderAll() {
+        window.renderAll = () => {
+            const selectedMonth = document.getElementById('filter-month').value; // Format "YYYY-MM"
+            
+            // Filtrer les transactions par rapport au mois sélectionné
+            const filteredTransactions = data.transactions.filter(t => {
+                if (!selectedMonth) return true;
+                return t.date && t.date.startsWith(selectedMonth);
+            });
+
             let incomes = 0, expenses = 0;
-            data.transactions.forEach(t => t.type === 'income' ? incomes += t.amount : expenses += t.amount);
+            filteredTransactions.forEach(t => t.type === 'income' ? incomes += t.amount : expenses += t.amount);
             const balance = incomes - expenses;
 
             document.getElementById('total-incomes').innerText = incomes.toFixed(2);
@@ -233,15 +257,15 @@
             document.getElementById('balance').innerText = balance.toFixed(2);
 
             const tList = document.getElementById('transactions-list');
-            tList.innerHTML = data.transactions.length === 0 ? '<p class="text-sm text-slate-400 italic">Aucune opération.</p>' : '';
+            tList.innerHTML = filteredTransactions.length === 0 ? '<p class="text-sm text-slate-400 italic">Aucune opération pour ce mois.</p>' : '';
 
-            data.transactions.forEach(t => {
+            filteredTransactions.forEach(t => {
                 const isInc = t.type === 'income';
                 tList.innerHTML += `
                     <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700/30 rounded-xl">
                         <div>
                             <p class="font-semibold">${t.name}</p>
-                            <p class="text-xs text-slate-400">${t.category} • ${t.date}</p>
+                            <p class="text-xs text-slate-400">${t.category} • ${t.date.split('-').reverse().join('/')}</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="font-bold ${isInc ? 'text-emerald-500' : 'text-red-500'}">${isInc ? '+' : '-'}${t.amount}€</span>
@@ -251,37 +275,29 @@
                 `;
             });
 
-            updateChart(incomes, expenses, balance);
-        }
+            updateChart(filteredTransactions);
+        };
 
-        function updateChart(incomes, expenses, balance) {
+        function updateChart(transactions) {
             const ctx = document.getElementById('proportionChart').getContext('2d');
             const isDark = document.documentElement.classList.contains('dark');
+            const paletteChoice = document.getElementById('color-palette-select').value;
+            const currentPalette = palettes[paletteChoice];
+
             if(chartInstance) chartInstance.destroy();
 
-            // Construction des labels et morceaux détaillés pour le Donut
             let labels = [];
             let values = [];
             let bgColors = [];
             let colorIndex = 0;
 
-            // 1. Ajouter chaque revenu/salaire individuellement comme des morceaux proportionnels
-            data.transactions.filter(t => t.type === 'income').forEach(t => {
-                labels.push(`Revenu: ${t.name}`);
+            transactions.forEach(t => {
+                labels.push(`${t.name} (${t.amount}€)`);
                 values.push(t.amount);
-                bgColors.push(colorPalette[colorIndex % colorPalette.length]);
+                bgColors.push(currentPalette[colorIndex % currentPalette.length]);
                 colorIndex++;
             });
 
-            // 2. Ajouter chaque dépense individuelle (ou chaque morceau proportionnel)
-            data.transactions.filter(t => t.type === 'expense').forEach(t => {
-                labels.push(`Dépense: ${t.name} (${t.amount}€)`);
-                values.push(t.amount);
-                bgColors.push(colorPalette[colorIndex % colorPalette.length]);
-                colorIndex++;
-            });
-
-            // Si aucune donnée, on met un placeholder visuel
             if(values.length === 0) {
                 labels = ['Aucune donnée'];
                 values = [1];
