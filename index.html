@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Budget Cloud Temps Réel</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen p-4 sm:p-8 transition-colors duration-300">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- En-tête & Connexion Cloud -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-3 rounded-xl shadow-lg shadow-blue-600/30">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">Mon Budget Cloud</h1>
+                    <p id="user-status" class="text-xs text-slate-400">Déconnecté</p>
+                </div>
+            </div>
+
+            <!-- Formulaires d'authentification -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <div id="auth-forms" class="flex gap-2 items-center">
+                    <input type="email" id="auth-email" placeholder="Email" class="p-2 text-xs bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                    <input type="password" id="auth-pass" placeholder="Mot de passe" class="p-2 text-xs bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                    <button onclick="loginUser()" class="bg-blue-600 text-white px-3 py-2 text-xs rounded-xl hover:bg-blue-700 transition">Connexion</button>
+                    <button onclick="registerUser()" class="bg-emerald-600 text-white px-3 py-2 text-xs rounded-xl hover:bg-emerald-700 transition">S'inscrire</button>
+                </div>
+                <div id="auth-logged" class="hidden flex items-center gap-3">
+                    <span id="logged-user-email" class="text-xs font-semibold text-blue-500"></span>
+                    <button onclick="logoutUser()" class="bg-red-500 text-white px-3 py-2 text-xs rounded-xl hover:bg-red-600">Déconnexion</button>
+                </div>
+                <button onclick="toggleDarkMode()" class="p-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-slate-200 transition">🌙</button>
+            </div>
+        </div>
+
+        <!-- Statistiques Globales -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <p class="text-sm font-medium text-slate-500 mb-1">Revenus Totaux</p>
+                <p class="text-3xl font-bold text-emerald-500"><span id="total-incomes">0</span> €</p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <p class="text-sm font-medium text-slate-500 mb-1">Total Dépenses</p>
+                <p class="text-3xl font-bold text-red-500"><span id="total-expenses">0</span> €</p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <p class="text-sm font-medium text-slate-500 mb-1">Reste à vivre (Solde)</p>
+                <p class="text-3xl font-bold text-blue-500"><span id="balance">0</span> €</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Formulaire Saisie -->
+            <div class="space-y-6">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                    <h2 class="text-lg font-bold mb-4">Nouvelle Opération</h2>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Titre</label>
+                            <input type="text" id="t-name" placeholder="Ex: Salaire / Courses" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Montant (€)</label>
+                            <input type="number" id="t-amount" placeholder="0.00" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Catégorie</label>
+                            <select id="t-category" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                                <option value="Salaire / Revenu">Salaire / Revenu</option>
+                                <option value="Courses">Courses</option>
+                                <option value="Loyer">Loyer</option>
+                                <option value="Transport">Transport</option>
+                                <option value="Loisirs">Loisirs</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Type</label>
+                            <select id="t-type" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                                <option value="income">Revenu (+)</option>
+                                <option value="expense">Dépense (-)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="addTransaction()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition">Ajouter l'opération</button>
+                </div>
+
+                <!-- Graphique Proportionnel -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                    <h2 class="text-lg font-bold mb-4">Proportion Dépenses vs Reste</h2>
+                    <div class="relative h-64 w-full flex items-center justify-center">
+                        <canvas id="proportionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historique -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col">
+                <h2 class="text-lg font-bold mb-4">Historique Temps Réel</h2>
+                <div id="transactions-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2 flex-grow"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ⚠️ REMPLACEZ CES LIGNES PAR VOS PROPRES CONFIGURATIONS FIREBASE
+        const firebaseConfig = {
+           apiKey: "AIzaSyAosWGrb8yV7ParDFKAVtW95hhZzDEuWHc",
+          authDomain: "monbudgetapp-82e51.firebaseapp.com",
+         projectId: "monbudgetapp-82e51",
+           storageBucket: "monbudgetapp-82e51.firebasestorage.app",
+            messagingSenderId: "892700364196",
+           appId: "1:892700364196:web:7f4b7db99c7b7eb05a4531"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let data = { transactions: [] };
+        let chartInstance = null;
+        let unsub = null;
+
+        window.toggleDarkMode = () => {
+            document.documentElement.classList.toggle('dark');
+            updateChart();
+        };
+
+        // Gestion Authentification Globale
+        window.registerUser = async () => {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass);
+                alert("Compte créé avec succès !");
+            } catch(e) { alert("Erreur : " + e.message); }
+        };
+
+        window.loginUser = async () => {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch(e) { alert("Erreur de connexion : " + e.message); }
+        };
+
+        window.logoutUser = async () => {
+            await signOut(auth);
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user.uid;
+                document.getElementById('logged-user-email').innerText = user.email;
+                document.getElementById('auth-forms').classList.add('hidden');
+                document.getElementById('auth-logged').classList.remove('hidden');
+                document.getElementById('user-status').innerText = "Connecté en temps réel";
+                
+                // Écoute en temps réel de Firestore
+                unsub = onSnapshot(doc(db, "budgets", currentUser), (docSnap) => {
+                    if (docSnap.exists()) {
+                        data = docSnap.data();
+                    } else {
+                        data = { transactions: [] };
+                    }
+                    renderAll();
+                });
+            } else {
+                if(unsub) unsub();
+                currentUser = null;
+                data = { transactions: [] };
+                document.getElementById('auth-forms').classList.remove('hidden');
+                document.getElementById('auth-logged').classList.add('hidden');
+                document.getElementById('user-status').innerText = "Déconnecté";
+                renderAll();
+            }
+        });
+
+        let currentUser = null;
+
+        window.addTransaction = async () => {
+            if(!currentUser) return alert("Veuillez vous connecter pour enregistrer vos opérations.");
+            const name = document.getElementById('t-name').value;
+            const amount = parseFloat(document.getElementById('t-amount').value);
+            const category = document.getElementById('t-category').value;
+            const type = document.getElementById('t-type').value;
+
+            if(!name || isNaN(amount) || amount <= 0) return alert("Veuillez remplir correctement les champs.");
+
+            data.transactions.unshift({
+                id: Date.now(), name, amount, category, type,
+                date: new Date().toLocaleDateString('fr-FR')
+            });
+
+            await setDoc(doc(db, "budgets", currentUser), data);
+            document.getElementById('t-name').value = '';
+            document.getElementById('t-amount').value = '';
+        };
+
+        window.deleteTransaction = async (id) => {
+            if(!currentUser) return;
+            data.transactions = data.transactions.filter(t => t.id !== id);
+            await setDoc(doc(db, "budgets", currentUser), data);
+        };
+
+        function renderAll() {
+            let incomes = 0, expenses = 0;
+            data.transactions.forEach(t => t.type === 'income' ? incomes += t.amount : expenses += t.amount);
+            const balance = incomes - expenses;
+
+            document.getElementById('total-incomes').innerText = incomes.toFixed(2);
+            document.getElementById('total-expenses').innerText = expenses.toFixed(2);
+            document.getElementById('balance').innerText = balance.toFixed(2);
+
+            const tList = document.getElementById('transactions-list');
+            tList.innerHTML = data.transactions.length === 0 ? '<p class="text-sm text-slate-400 italic">Aucune opération.</p>' : '';
+
+            data.transactions.forEach(t => {
+                const isInc = t.type === 'income';
+                tList.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700/30 rounded-xl">
+                        <div>
+                            <p class="font-semibold">${t.name}</p>
+                            <p class="text-xs text-slate-400">${t.category} • ${t.date}</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold ${isInc ? 'text-emerald-500' : ''}">${isInc ? '+' : '-'}${t.amount}€</span>
+                            <button onclick="deleteTransaction(${t.id})" class="text-red-500 hover:underline">✖</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            updateChart(incomes, expenses, balance);
+        }
+
+        function updateChart(incomes, expenses, balance) {
+            const ctx = document.getElementById('proportionChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            if(chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Dépenses totales', 'Reste à vivre'],
+                    datasets: [{
+                        data: [expenses, Math.max(0, balance)],
+                        backgroundColor: ['#ef4444', '#3b82f6'],
+                        borderWidth: 2,
+                        borderColor: isDark ? '#1e293b' : '#ffffff'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+    </script>
+</body>
+</html>
