@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Budget Cloud Temps Réel</title>
+    <title>Mon Budget Détaillé</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -51,7 +51,7 @@
         <!-- Statistiques Globales -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <p class="text-sm font-medium text-slate-500 mb-1">Revenus Totaux</p>
+                <p class="text-sm font-medium text-slate-500 mb-1">Revenus / Salaire</p>
                 <p class="text-3xl font-bold text-emerald-500"><span id="total-incomes">0</span> €</p>
             </div>
             <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
@@ -71,8 +71,8 @@
                     <h2 class="text-lg font-bold mb-4">Nouvelle Opération</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="col-span-2 sm:col-span-1">
-                            <label class="text-xs font-medium text-slate-500 mb-1 block">Titre</label>
-                            <input type="text" id="t-name" placeholder="Ex: Salaire / Courses" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Titre (ex: Salaire, Loyer...)</label>
+                            <input type="text" id="t-name" placeholder="Ex: Salaire de base" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
                         </div>
                         <div class="col-span-2 sm:col-span-1">
                             <label class="text-xs font-medium text-slate-500 mb-1 block">Montant (€)</label>
@@ -81,7 +81,7 @@
                         <div class="col-span-2 sm:col-span-1">
                             <label class="text-xs font-medium text-slate-500 mb-1 block">Catégorie</label>
                             <select id="t-category" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
-                                <option value="Salaire / Revenu">Salaire / Revenu</option>
+                                <option value="Salaire / Revenu Fixe">Salaire / Revenu Fixe</option>
                                 <option value="Courses">Courses</option>
                                 <option value="Loyer">Loyer</option>
                                 <option value="Transport">Transport</option>
@@ -92,7 +92,7 @@
                         <div class="col-span-2 sm:col-span-1">
                             <label class="text-xs font-medium text-slate-500 mb-1 block">Type</label>
                             <select id="t-type" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
-                                <option value="income">Revenu (+)</option>
+                                <option value="income">Revenu / Salaire (+)</option>
                                 <option value="expense">Dépense (-)</option>
                             </select>
                         </div>
@@ -100,10 +100,10 @@
                     <button onclick="addTransaction()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition">Ajouter l'opération</button>
                 </div>
 
-                <!-- Graphique Proportionnel -->
+                <!-- Graphique Donut Détaillé (Plein de petits morceaux) -->
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                    <h2 class="text-lg font-bold mb-4">Proportion Dépenses vs Reste</h2>
-                    <div class="relative h-64 w-full flex items-center justify-center">
+                    <h2 class="text-lg font-bold mb-4">Répartition Détaillée (Salaire & Morceaux de Dépenses)</h2>
+                    <div class="relative h-72 w-full flex items-center justify-center">
                         <canvas id="proportionChart"></canvas>
                     </div>
                 </div>
@@ -123,7 +123,6 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ⚠️ REMPLACEZ CES LIGNES PAR VOS PROPRES CONFIGURATIONS FIREBASE
         const firebaseConfig = {
            apiKey: "AIzaSyAosWGrb8yV7ParDFKAVtW95hhZzDEuWHc",
           authDomain: "monbudgetapp-82e51.firebaseapp.com",
@@ -141,12 +140,18 @@
         let chartInstance = null;
         let unsub = null;
 
+        // Palette de couleurs variées pour créer plein de petits morceaux distincts
+        const colorPalette = [
+            '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', 
+            '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', 
+            '#06b6d4', '#e11d48', '#4f46e5', '#1098ad', '#f43f5e'
+        ];
+
         window.toggleDarkMode = () => {
             document.documentElement.classList.toggle('dark');
-            updateChart();
+            renderAll();
         };
 
-        // Gestion Authentification Globale
         window.registerUser = async () => {
             const email = document.getElementById('auth-email').value;
             const pass = document.getElementById('auth-pass').value;
@@ -164,9 +169,7 @@
             } catch(e) { alert("Erreur de connexion : " + e.message); }
         };
 
-        window.logoutUser = async () => {
-            await signOut(auth);
-        };
+        window.logoutUser = async () => { await signOut(auth); };
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -176,13 +179,8 @@
                 document.getElementById('auth-logged').classList.remove('hidden');
                 document.getElementById('user-status').innerText = "Connecté en temps réel";
                 
-                // Écoute en temps réel de Firestore
                 unsub = onSnapshot(doc(db, "budgets", currentUser), (docSnap) => {
-                    if (docSnap.exists()) {
-                        data = docSnap.data();
-                    } else {
-                        data = { transactions: [] };
-                    }
+                    data = docSnap.exists() ? docSnap.data() : { transactions: [] };
                     renderAll();
                 });
             } else {
@@ -212,15 +210,17 @@
                 date: new Date().toLocaleDateString('fr-FR')
             });
 
-            await setDoc(doc(db, "budgets", currentUser), data);
+            if(currentUser) await setDoc(doc(db, "budgets", currentUser), data);
             document.getElementById('t-name').value = '';
             document.getElementById('t-amount').value = '';
+            renderAll();
         };
 
         window.deleteTransaction = async (id) => {
             if(!currentUser) return;
             data.transactions = data.transactions.filter(t => t.id !== id);
             await setDoc(doc(db, "budgets", currentUser), data);
+            renderAll();
         };
 
         function renderAll() {
@@ -244,7 +244,7 @@
                             <p class="text-xs text-slate-400">${t.category} • ${t.date}</p>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="font-bold ${isInc ? 'text-emerald-500' : ''}">${isInc ? '+' : '-'}${t.amount}€</span>
+                            <span class="font-bold ${isInc ? 'text-emerald-500' : 'text-red-500'}">${isInc ? '+' : '-'}${t.amount}€</span>
                             <button onclick="deleteTransaction(${t.id})" class="text-red-500 hover:underline">✖</button>
                         </div>
                     </div>
@@ -259,18 +259,56 @@
             const isDark = document.documentElement.classList.contains('dark');
             if(chartInstance) chartInstance.destroy();
 
+            // Construction des labels et morceaux détaillés pour le Donut
+            let labels = [];
+            let values = [];
+            let bgColors = [];
+            let colorIndex = 0;
+
+            // 1. Ajouter chaque revenu/salaire individuellement comme des morceaux proportionnels
+            data.transactions.filter(t => t.type === 'income').forEach(t => {
+                labels.push(`Revenu: ${t.name}`);
+                values.push(t.amount);
+                bgColors.push(colorPalette[colorIndex % colorPalette.length]);
+                colorIndex++;
+            });
+
+            // 2. Ajouter chaque dépense individuelle (ou chaque morceau proportionnel)
+            data.transactions.filter(t => t.type === 'expense').forEach(t => {
+                labels.push(`Dépense: ${t.name} (${t.amount}€)`);
+                values.push(t.amount);
+                bgColors.push(colorPalette[colorIndex % colorPalette.length]);
+                colorIndex++;
+            });
+
+            // Si aucune donnée, on met un placeholder visuel
+            if(values.length === 0) {
+                labels = ['Aucune donnée'];
+                values = [1];
+                bgColors = ['#cbd5e1'];
+            }
+
             chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Dépenses totales', 'Reste à vivre'],
+                    labels: labels,
                     datasets: [{
-                        data: [expenses, Math.max(0, balance)],
-                        backgroundColor: ['#ef4444', '#3b82f6'],
+                        data: values,
+                        backgroundColor: bgColors,
                         borderWidth: 2,
                         borderColor: isDark ? '#1e293b' : '#ffffff'
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom',
+                            labels: { color: isDark ? '#cbd5e1' : '#475569', font: { size: 10 } }
+                        } 
+                    } 
+                }
             });
         }
     </script>
