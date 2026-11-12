@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Budget & Cloud Sync</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen p-4 sm:p-8 transition-colors duration-300">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- En-tête & Barre de Connexion Cloud -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-3 rounded-xl shadow-lg shadow-blue-600/30">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">Mon Budget Cloud</h1>
+                    <p id="user-status" class="text-xs text-slate-400">Mode local (Non connecté)</p>
+                </div>
+            </div>
+
+            <!-- Système de Connexion ID + MDP -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <div id="auth-forms" class="flex gap-2 items-center">
+                    <input type="email" id="auth-email" placeholder="Identifiant (Email)" class="p-2 text-xs bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                    <input type="password" id="auth-pass" placeholder="Mot de passe" class="p-2 text-xs bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                    <button onclick="handleLogin()" class="bg-blue-600 text-white px-3 py-2 text-xs rounded-xl hover:bg-blue-700 font-medium transition">Connexion</button>
+                    <button onclick="handleRegister()" class="bg-emerald-600 text-white px-3 py-2 text-xs rounded-xl hover:bg-emerald-700 font-medium transition">S'inscrire</button>
+                </div>
+                <div id="auth-logged" class="hidden flex items-center gap-3">
+                    <span id="logged-user-email" class="text-xs font-semibold text-blue-500"></span>
+                    <button onclick="handleLogout()" class="bg-red-500 text-white px-3 py-2 text-xs rounded-xl hover:bg-red-600">Déconnexion</button>
+                </div>
+                <button onclick="toggleDarkMode()" class="p-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistiques Globales -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Total Revenus -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Revenus Totaux (Salaire +)</p>
+                <p class="text-3xl font-bold text-emerald-500"><span id="total-incomes">0</span> <span class="text-xl">€</span></p>
+            </div>
+            <!-- Dépenses -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Dépenses</p>
+                <p class="text-3xl font-bold text-red-500"><span id="total-expenses">0</span> <span class="text-xl">€</span></p>
+            </div>
+            <!-- Reste à vivre -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Reste à vivre (Solde)</p>
+                <p class="text-3xl font-bold text-blue-500"><span id="balance">0</span> <span class="text-xl">€</span></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Formulaire Saisie -->
+            <div class="space-y-6">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                    <h2 class="text-lg font-bold mb-4">Nouvelle Opération</h2>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Titre</label>
+                            <input type="text" id="t-name" placeholder="Ex: Salaire / Loyer" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700 focus:outline-none">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Montant (€)</label>
+                            <input type="number" id="t-amount" placeholder="0.00" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700 focus:outline-none">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Catégorie</label>
+                            <select id="t-category" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700 focus:outline-none">
+                                <option value="Salaire / Revenu Fixe">Salaire / Revenu Fixe</option>
+                                <option value="Courses (Lidl, Aldi...)">Courses alimentaires</option>
+                                <option value="Loyer & Logement">Loyer & Logement</option>
+                                <option value="Voiture & Transport">Voiture & Transport</option>
+                                <option value="Sport & Loisirs">Sport & Loisirs</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-medium text-slate-500 mb-1 block">Type</label>
+                            <select id="t-type" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl dark:border-slate-700 focus:outline-none">
+                                <option value="income">Revenu (+)</option>
+                                <option value="expense">Dépense (-)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="addTransaction()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition">Ajouter</button>
+                </div>
+
+                <!-- Graphique Proportionnel Salaire vs Reste -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                    <h2 class="text-lg font-bold mb-4">Proportion Revenus vs Dépenses / Reste</h2>
+                    <div class="relative h-64 w-full flex items-center justify-center">
+                        <canvas id="proportionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historique -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col">
+                <h2 class="text-lg font-bold mb-4">Historique des Opérations</h2>
+                <div id="transactions-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2 flex-grow"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let data = { transactions: [] };
+        let currentUser = null;
+        let chartInstance = null;
+
+        window.onload = () => {
+            // Restaurer session locale ou cloud simulé
+            const session = localStorage.getItem('budgetUserSession');
+            if(session) {
+                currentUser = session;
+                document.getElementById('logged-user-email').innerText = currentUser;
+                document.getElementById('auth-forms').classList.add('hidden');
+                document.getElementById('auth-logged').classList.remove('hidden');
+                document.getElementById('user-status').innerText = "Connecté au cloud (Temps réel)";
+                loadCloudData();
+            } else {
+                const local = localStorage.getItem('budgetLocalData');
+                if(local) data = JSON.parse(local);
+            }
+            if (localStorage.getItem('darkModeV3') === 'true') document.documentElement.classList.add('dark');
+            renderAll();
+        };
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkModeV3', document.documentElement.classList.contains('dark'));
+            updateChart();
+        }
+
+        // Système d'authentification ID / MDP simulé synchronisable sur GitHub Pages
+        function handleRegister() {
+            const email = document.getElementById('auth-email').value.trim();
+            const pass = document.getElementById('auth-pass').value.trim();
+            if(!email || !pass) return alert("Veuillez entrer un email et un mot de passe.");
+            
+            localStorage.setItem(`user_${email}`, JSON.stringify({ pass, data: { transactions: data.transactions } }));
+            alert("Compte créé avec succès ! Vous pouvez vous connecter.");
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('auth-email').value.trim();
+            const pass = document.getElementById('auth-pass').value.trim();
+            const account = localStorage.getItem(`user_${email}`);
+            
+            if(!account) return alert("Compte introuvable.");
+            const parsed = JSON.parse(account);
+            if(parsed.pass !== pass) return alert("Mot de passe incorrect.");
+
+            currentUser = email;
+            localStorage.setItem('budgetUserSession', email);
+            data = parsed.data;
+            
+            document.getElementById('logged-user-email').innerText = currentUser;
+            document.getElementById('auth-forms').classList.add('hidden');
+            document.getElementById('auth-logged').classList.remove('hidden');
+            document.getElementById('user-status').innerText = "Connecté (Temps réel actif)";
+            renderAll();
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem('budgetUserSession');
+            document.getElementById('auth-forms').classList.remove('hidden');
+            document.getElementById('auth-logged').classList.add('hidden');
+            document.getElementById('user-status').innerText = "Mode local";
+            renderAll();
+        }
+
+        function saveData() {
+            if(currentUser) {
+                const account = JSON.parse(localStorage.getItem(`user_${currentUser}`));
+                account.data = data;
+                localStorage.setItem(`user_${currentUser}`, JSON.stringify(account));
+            } else {
+                localStorage.setItem('budgetLocalData', JSON.stringify(data));
+            }
+        }
+
+        function loadCloudData() {
+            const account = JSON.parse(localStorage.getItem(`user_${currentUser}`));
+            if(account && account.data) data = account.data;
+            renderAll();
+        }
+
+        function addTransaction() {
+            const name = document.getElementById('t-name').value;
+            const amount = parseFloat(document.getElementById('t-amount').value);
+            const category = document.getElementById('t-category').value;
+            const type = document.getElementById('t-type').value;
+
+            if(!name || isNaN(amount) || amount <= 0) return alert("Champs invalides");
+
+            data.transactions.unshift({
+                id: Date.now(), name, amount, category, type,
+                date: new Date().toLocaleDateString('fr-FR')
+            });
+
+            document.getElementById('t-name').value = '';
+            document.getElementById('t-amount').value = '';
+            saveData();
+            renderAll();
+        }
+
+        function deleteTransaction(id) {
+            data.transactions = data.transactions.filter(t => t.id !== id);
+            saveData();
+            renderAll();
+        }
+
+        function renderAll() {
+            let incomes = 0;
+            let expenses = 0;
+
+            data.transactions.forEach(t => {
+                if(t.type === 'income') incomes += t.amount;
+                else expenses += t.amount;
+            });
+
+            const balance = incomes - expenses;
+
+            document.getElementById('total-incomes').innerText = incomes.toFixed(2);
+            document.getElementById('total-expenses').innerText = expenses.toFixed(2);
+            document.getElementById('balance').innerText = balance.toFixed(2);
+
+            const tList = document.getElementById('transactions-list');
+            tList.innerHTML = data.transactions.length === 0 ? '<p class="text-sm text-slate-400 italic">Aucune opération.</p>' : '';
+
+            data.transactions.forEach(t => {
+                const isInc = t.type === 'income';
+                tList.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700/30 rounded-xl">
+                        <div>
+                            <p class="font-semibold">${t.name}</p>
+                            <p class="text-xs text-slate-400">${t.category} • ${t.date}</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold ${isInc ? 'text-emerald-500' : 'text-slate-800 dark:text-slate-100'}">
+                                ${isInc ? '+' : '-'}${t.amount}€
+                            </span>
+                            <button onclick="deleteTransaction(${t.id})" class="text-red-500 hover:underline">✖</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            updateChart(incomes, expenses, balance);
+        }
+
+        function updateChart(incomes, expenses, balance) {
+            const ctx = document.getElementById('proportionChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+
+            if(chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Dépenses totales', 'Reste à vivre (Solde)'],
+                    datasets: [{
+                        data: [expenses, Math.max(0, balance)],
+                        backgroundColor: ['#ef4444', '#3b82f6'],
+                        borderWidth: 2,
+                        borderColor: isDark ? '#1e293b' : '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: isDark ? '#cbd5e1' : '#475569' } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
